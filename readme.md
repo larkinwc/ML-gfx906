@@ -13,7 +13,8 @@
 
 | Project    |    | Image |
 | ---------- | -- | ----- |
-| ROCm       | ╦═ | `docker.io/mixa3607/rocm-gfx906:7.1.0-complete` |
+| ROCm       | ╦═ | `docker.io/larkinwc/rocm-gfx906:6.3.3-complete` |
+|            | ╠═ | `docker.io/mixa3607/rocm-gfx906:7.1.0-complete` |
 |            | ╠═ | `docker.io/mixa3607/rocm-gfx906:7.0.2-complete` |
 |            | ╠═ | `docker.io/mixa3607/rocm-gfx906:7.0.0-complete` |
 |            | ╠═ | `docker.io/mixa3607/rocm-gfx906:6.4.4-complete` |
@@ -30,7 +31,8 @@
 | vLLM       | ╦═ | `docker.io/mixa3607/vllm-gfx906:0.11.0-rocm-6.3.3` |
 |            | ╠═ | `docker.io/mixa3607/vllm-gfx906:0.10.2-rocm-6.3.3` |
 |            | ╚═ | `docker.io/mixa3607/vllm-gfx906:0.8.5-rocm-6.3.3`  |
-| llama.cpp  | ╦═ | `docker.io/mixa3607/llama.cpp-gfx906:full-b7091-rocm-7.1.0` |
+| llama.cpp  | ╦═ | `docker.io/larkinwc/llama.cpp-gfx906:full-rocm-6.3.3` |
+|            | ╠═ | `docker.io/mixa3607/llama.cpp-gfx906:full-b7091-rocm-7.1.0` |
 |            | ╚═ | `docker.io/mixa3607/llama.cpp-gfx906:full-b7091-rocm-6.3.3` |
 
 
@@ -54,8 +56,13 @@ Committing changes to '/sys/class/drm/card1/device/pp_table'.
 ```
 <img src="./docs/images/temperatures.png" alt="temperatures" width="400"/>
 
+## Deployment
+- [K3s LXC deploy configs](./deploy/k3s-lxc/) - Helm values, LXC config, systemd units
+- Helm chart: [mixa3607/charts](https://github.com/mixa3607/charts) `llamacpp`
+
 ## Environment
-[env v1](./docs/setup.v1.md)
+- [env v2 - aimemer (4x MI50, Proxmox K3s LXC)](./docs/setup.v2.md)
+- [env v1](./docs/setup.v1.md)
 
 ## RVS
 ```shell

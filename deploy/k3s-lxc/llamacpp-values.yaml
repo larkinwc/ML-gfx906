@@ -1,0 +1,90 @@
+image:
+  registry: docker.io
+  repository: larkinwc/llama.cpp-gfx906
+  tag: full-rocm-6.3.3
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+terminationGracePeriodSeconds: 5
+
+containerSecurityContext:
+  enabled: true
+  privileged: true
+  runAsUser: 0
+  runAsGroup: 0
+  runAsNonRoot: false
+  readOnlyRootFilesystem: false
+  allowPrivilegeEscalation: true
+  seccompProfile:
+    type: Unconfined
+  capabilities:
+    add:
+      - SYS_PTRACE
+
+ingress:
+  enabled: false
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/path: /metrics
+  prometheus.io/port: "8080"
+
+resources:
+  limits:
+    memory: 200Gi
+  requests:
+    cpu: 4
+    memory: 8Gi
+
+persistence:
+  enabled: false
+
+extraEnvVars:
+  - name: LLAMA_ARG_MODEL
+    value: /models/Qwen3.5-35B-A3B-Q8_0.gguf
+  - name: LLAMA_ARG_ALIAS
+    value: qwen3.5-35b
+  - name: LLAMA_ARG_THREADS
+    value: "48"
+  - name: LLAMA_ARG_CTX_SIZE
+    value: "131072"
+  - name: LLAMA_ARG_N_PARALLEL
+    value: "2"
+  - name: LLAMA_ARG_THREADS_HTTP
+    value: "-1"
+  - name: LLAMA_ARG_N_GPU_LAYERS
+    value: "99"
+  - name: LLAMA_ARG_ENDPOINT_METRICS
+    value: "true"
+  - name: LLAMA_ARG_ENDPOINT_SLOTS
+    value: "true"
+  - name: LLAMA_ARG_ENDPOINT_PROPS
+    value: "true"
+  - name: LLAMA_ARG_NO_MMAP
+    value: "true"
+  - name: LLAMA_ARG_JINJA
+    value: "true"
+  - name: LLAMA_ARG_FLASH_ATTN
+    value: "true"
+  - name: HSA_OVERRIDE_GFX_VERSION
+    value: "9.0.6"
+
+extraVolumeMounts:
+  - name: dev-kfd
+    mountPath: /dev/kfd
+  - name: dev-dri
+    mountPath: /dev/dri
+  - name: models
+    mountPath: /models
+
+extraVolumes:
+  - name: dev-kfd
+    hostPath:
+      path: /dev/kfd
+  - name: dev-dri
+    hostPath:
+      path: /dev/dri
+  - name: models
+    hostPath:
+      path: /root/models
+      type: Directory
