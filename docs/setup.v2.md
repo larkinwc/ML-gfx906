@@ -33,6 +33,13 @@ Proxmox host (192.168.1.198)
     │       │   ├── GPU: all 4x via /dev/kfd + /dev/dri hostPath mounts
     │       │   ├── API key auth via LLAMA_API_KEY
     │       │   └── 262K context (131K per slot x 2 parallel)
+    │       ├── rocm-exporter (Deployment)
+    │       │   ├── Image: larkinwc/rocm-gfx906:6.3.3-complete
+    │       │   └── Prometheus metrics on :9101 (temps, VRAM, power, clocks)
+    │       ├── prometheus (Deployment)
+    │       │   └── Scrapes llamacpp :8080 + rocm-exporter :9101
+    │       ├── grafana (Deployment)
+    │       │   └── Dashboards: GPU Monitoring, LLM Inference
     │       └── cloudflared (Deployment)
     │           └── Routes <REDACTED> -> llama-server
     └── /root/models/ (GGUF model files)
@@ -76,6 +83,9 @@ All in [`deploy/k3s-lxc/`](../deploy/k3s-lxc/):
 - `host-sysctl.conf` - sysctl settings (install on Proxmox host at `/etc/sysctl.d/k3s.conf`)
 - `host-modules.conf` - kernel modules (install on host at `/etc/modules-load.d/k3s.conf`)
 - `llamacpp-values.yaml` - Helm values for llama.cpp deployment
+- `rocm-exporter.py` - GPU metrics exporter script (temps, VRAM, power, clocks)
+- `rocm-exporter.yaml` - K8s manifests for the exporter (Deployment + Service)
+- `monitoring.yaml` - Prometheus + Grafana stack
 
 ### Deploy llama.cpp
 ```bash
@@ -99,6 +109,27 @@ helm install llama-cpp /root/charts/charts/llamacpp \
 kubectl get pods -n llm
 curl http://<service-ip>:8080/health
 ```
+
+### Deploy monitoring
+```bash
+# Inside LXC (pct exec 100 -- bash)
+export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+
+# Deploy Prometheus + Grafana
+kubectl apply -f /path/to/monitoring.yaml
+
+# Deploy ROCm GPU exporter
+kubectl create configmap rocm-exporter-script -n llm \
+  --from-file=exporter.py=/path/to/rocm-exporter.py
+kubectl apply -f /path/to/rocm-exporter.yaml
+
+# Verify
+kubectl get pods -n llm
+curl http://<rocm-exporter-svc>:9101/metrics
+```
+
+Grafana dashboards (GPU Monitoring + LLM Inference) can be imported via the API
+or manually after first deploy. Grafana is on port 3000 (admin/admin).
 
 ### Switching models
 ```bash
