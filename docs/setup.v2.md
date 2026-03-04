@@ -41,7 +41,7 @@ Proxmox host (192.168.1.198)
     │       ├── grafana (Deployment)
     │       │   └── Dashboards: GPU Monitoring, LLM Inference
     │       └── cloudflared (Deployment)
-    │           └── Routes <REDACTED> -> llama-server
+    │           └── Cloudflare tunnel -> llama-server
     └── /root/models/ (GGUF model files)
 ```
 
@@ -59,12 +59,10 @@ source rocm/preset.rocm-6.3.3.sh && bash rocm/build-and-push.rocm.sh
 source llama.cpp/preset.rocm-6.3.3.sh && bash llama.cpp/build-and-push.rocm.sh
 ```
 
-## Public API
-- **Endpoint**: `https://<REDACTED>`
-- **Auth**: `Authorization: Bearer <API_KEY>` (standard OpenAI-compatible)
-- **Model alias**: `qwen3.5-35b`
+## API
+- **Auth**: `Authorization: Bearer <API_KEY>` (standard OpenAI-compatible, set via `LLAMA_API_KEY` env var)
 - OpenAI-compatible: `/v1/chat/completions`, `/v1/models`, `/health`
-- Cloudflare tunnel via cloudflared deployment in K3s
+- Exposed via Cloudflare tunnel (cloudflared deployment in K3s)
 
 ## K3s LXC setup
 
