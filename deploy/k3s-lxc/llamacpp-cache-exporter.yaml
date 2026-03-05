@@ -1,0 +1,98 @@
+# llama.cpp prompt cache metrics exporter
+# Streams llama-cpp pod logs via K8s API (RBAC included).
+# No modification to the llama-cpp container needed.
+#
+# Deploy:
+#   kubectl create configmap llamacpp-cache-exporter -n llm \
+#     --from-file=exporter.py=llamacpp-cache-exporter.py
+#   kubectl apply -f llamacpp-cache-exporter.yaml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llamacpp-cache-exporter
+  namespace: llm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: llamacpp-cache-exporter
+  template:
+    metadata:
+      labels:
+        app: llamacpp-cache-exporter
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9102"
+    spec:
+      serviceAccountName: llamacpp-log-reader
+      containers:
+        - name: exporter
+          image: python:3.12-slim
+          command: ["python3", "/scripts/exporter.py"]
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: LLAMA_LABEL_SELECTOR
+              value: "app.kubernetes.io/name=llamacpp"
+            - name: PORT
+              value: "9102"
+          ports:
+            - containerPort: 9102
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+      volumes:
+        - name: script
+          configMap:
+            name: llamacpp-cache-exporter
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: llamacpp-cache-exporter
+  namespace: llm
+spec:
+  selector:
+    app: llamacpp-cache-exporter
+  ports:
+    - port: 9102
+      targetPort: 9102
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: llamacpp-log-reader
+  namespace: llm
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pod-log-reader
+  namespace: llm
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: llamacpp-log-reader
+  namespace: llm
+subjects:
+  - kind: ServiceAccount
+    name: llamacpp-log-reader
+    namespace: llm
+roleRef:
+  kind: Role
+  name: pod-log-reader
+  apiGroup: rbac.authorization.k8s.io
