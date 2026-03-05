@@ -78,4 +78,9 @@ RUN --mount=type=bind,from=build_vllm,src=/dist/,target=/dist_vllm \
         opentelemetry-semantic-conventions-ai opentelemetry-exporter-otlp modelscope && \
     true
 
+# Patch RMSNormGated to add missing 'activation' parameter (upstream fix not in mobydick fork)
+RUN LAYERNORM=$(python3 -c "import vllm.model_executor.layers.layernorm as m; print(m.__file__)") && \
+    sed -i 's/norm_before_gate: bool = False,/norm_before_gate: bool = False,\n        activation: str = "swish",/' "$LAYERNORM" && \
+    sed -i 's/self.norm_before_gate = norm_before_gate/self.norm_before_gate = norm_before_gate\n        self.activation = activation/' "$LAYERNORM"
+
 CMD ["/bin/bash"]

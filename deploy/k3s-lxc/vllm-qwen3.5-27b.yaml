@@ -1,0 +1,167 @@
+# vLLM deployment for Qwen3.5-27B-AWQ on 4x MI50 (gfx906)
+# Requires: model pre-downloaded to /root/models/Qwen3.5-27B-AWQ on host
+#
+# Deploy:
+#   kubectl apply -f vllm-qwen3.5-27b.yaml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm
+  namespace: llm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vllm
+  template:
+    metadata:
+      labels:
+        app: vllm
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /metrics
+        prometheus.io/port: "8000"
+    spec:
+      terminationGracePeriodSeconds: 30
+      tolerations:
+        - key: node.kubernetes.io/disk-pressure
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: vllm
+          image: docker.io/larkinwc/vllm-gfx906:0.16.1-rocm-6.3.3-mobydick
+          imagePullPolicy: IfNotPresent
+          command:
+            - python3
+            - -m
+            - vllm.entrypoints.openai.api_server
+          args:
+            - --model
+            - /models/Qwen3.5-27B-AWQ
+            - --served-model-name
+            - Qwen3.5-27B-AWQ
+            - --dtype
+            - float16
+            - --tensor-parallel-size
+            - "4"
+            - --swap-space
+            - "0"
+            - --max-num-seqs
+            - "32"
+            - --max-model-len
+            - auto
+            - --gpu-memory-utilization
+            - "0.98"
+            - --enable-auto-tool-choice
+            - --tool-call-parser
+            - qwen3_coder
+            - --reasoning-parser
+            - qwen3
+            - --mm-processor-cache-gb
+            - "1"
+            - --limit-mm-per-prompt.image
+            - "1"
+            - --limit-mm-per-prompt.video
+            - "1"
+            - --skip-mm-profiling
+            - --enable-log-requests
+            - --log-error-stack
+            - --port
+            - "8000"
+            - --host
+            - "0.0.0.0"
+            - --trust-remote-code
+            - --enforce-eager
+          env:
+            - name: HSA_OVERRIDE_GFX_VERSION
+              value: "9.0.6"
+            - name: HIP_VISIBLE_DEVICES
+              value: "0,1,2,3"
+            - name: PYTORCH_ROCM_ARCH
+              value: gfx906
+            - name: VLLM_TARGET_DEVICE
+              value: rocm
+            - name: FLASH_ATTENTION_TRITON_AMD_ENABLE
+              value: "TRUE"
+            - name: VLLM_LOGGING_LEVEL
+              value: DEBUG
+            - name: OMP_NUM_THREADS
+              value: "4"
+            - name: TOKENIZERS_PARALLELISM
+              value: "false"
+            - name: RAY_EXPERIMENTAL_NOSET_ROCR_VISIBLE_DEVICES
+              value: "1"
+          ports:
+            - containerPort: 8000
+              name: http
+          resources:
+            requests:
+              cpu: 4
+              memory: 8Gi
+            limits:
+              memory: 200Gi
+          securityContext:
+            privileged: true
+            runAsUser: 0
+            seccompProfile:
+              type: Unconfined
+            capabilities:
+              add:
+                - SYS_PTRACE
+          volumeMounts:
+            - name: dev-kfd
+              mountPath: /dev/kfd
+            - name: dev-dri
+              mountPath: /dev/dri
+            - name: models
+              mountPath: /models
+            - name: shm
+              mountPath: /dev/shm
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            periodSeconds: 30
+            timeoutSeconds: 5
+      volumes:
+        - name: dev-kfd
+          hostPath:
+            path: /dev/kfd
+        - name: dev-dri
+          hostPath:
+            path: /dev/dri
+        - name: models
+          hostPath:
+            path: /root/models
+            type: Directory
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-server
+  namespace: llm
+spec:
+  selector:
+    app: vllm
+  ports:
+    - port: 8000
+      targetPort: 8000
+      name: http
