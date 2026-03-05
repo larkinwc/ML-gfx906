@@ -8,9 +8,8 @@ ARG FA_BRANCH="gfx906/v2.8.3.x"
 
 ############# Base image with PyTorch #############
 FROM ${BASE_ROCM_IMAGE} AS base
-# Python 3.12 + pip already in base image
-RUN rm -f /usr/lib/python3.12/EXTERNALLY-MANAGED && \
-    pip install --upgrade pip
+# Python 3.12 + pip already in base; remove PEP 668 guard
+RUN rm -f /usr/lib/python3.12/EXTERNALLY-MANAGED
 
 # Install PyTorch 2.9.1 from pre-built ROCm 6.3 wheel (skips hours of building)
 RUN pip install torch==2.9.1 torchvision --index-url https://download.pytorch.org/whl/rocm6.3
