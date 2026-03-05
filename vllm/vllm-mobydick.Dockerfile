@@ -6,15 +6,12 @@ ARG TRITON_BRANCH="v3.6.0+gfx906"
 ARG FA_REPO="https://github.com/ai-infos/flash-attention-gfx906.git"
 ARG FA_BRANCH="gfx906/v2.8.3.x"
 
-############# Base image with Python + PyTorch #############
+############# Base image with PyTorch #############
 FROM ${BASE_ROCM_IMAGE} AS base
+# Python 3.12 already in base image; install pip + dev headers
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    software-properties-common && \
-    add-apt-repository -y ppa:deadsnakes/ppa && \
-    apt-get update && apt-get install -y --no-install-recommends \
-    python3.12 python3.12-dev python3.12-venv python3.12-distutils && \
-    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 && \
-    python3 -m ensurepip && \
+    python3-dev python3-venv git && \
+    python3 -m ensurepip 2>/dev/null || true && \
     python3 -m pip install --upgrade pip && \
     rm -rf /var/lib/apt/lists/*
 
