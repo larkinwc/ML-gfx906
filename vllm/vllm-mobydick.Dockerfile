@@ -2,7 +2,7 @@ ARG BASE_ROCM_IMAGE="docker.io/larkinwc/rocm-gfx906:6.3.3-complete"
 ARG VLLM_REPO="https://github.com/ai-infos/vllm-gfx906-mobydick.git"
 ARG VLLM_BRANCH="gfx906/v0.16.1rc0.x"
 ARG TRITON_REPO="https://github.com/ai-infos/triton-gfx906.git"
-ARG TRITON_BRANCH="v3.6.0+gfx906"
+ARG TRITON_BRANCH="v3.5.1+gfx906"
 ARG FA_REPO="https://github.com/ai-infos/flash-attention-gfx906.git"
 ARG FA_BRANCH="gfx906/v2.8.3.x"
 
