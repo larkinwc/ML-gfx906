@@ -83,4 +83,8 @@ RUN LAYERNORM=/usr/local/lib/python3.12/dist-packages/vllm/model_executor/layers
     sed -i 's/norm_before_gate: bool = False,/norm_before_gate: bool = False,\n        activation: str = "swish",/' "$LAYERNORM" && \
     sed -i 's/self.norm_before_gate = norm_before_gate/self.norm_before_gate = norm_before_gate\n        self.activation = activation/' "$LAYERNORM"
 
+# Enable experimental prefix caching for hybrid models (Qwen3.5 GatedDeltaNet)
+RUN MODELCFG=/usr/local/lib/python3.12/dist-packages/vllm/config/model.py && \
+    sed -i '/Hybrid models do not support prefix caching/{n;s/return False/return True/}' "$MODELCFG"
+
 CMD ["/bin/bash"]
