@@ -64,7 +64,7 @@ RUN git clone --depth 1 --recurse-submodules --shallow-submodules --jobs 4 \
     --branch ${VLLM_BRANCH} ${VLLM_REPO} vllm
 WORKDIR /app/vllm
 RUN pip install --no-cache-dir -r requirements/rocm.txt 2>/dev/null || true
-RUN pip wheel --no-cache-dir --no-build-isolation -w /dist .
+RUN pip wheel --no-cache-dir --no-build-isolation --no-deps -w /dist .
 RUN rm -rf /app/vllm
 
 ############# Final image #############
