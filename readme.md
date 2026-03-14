@@ -9,11 +9,13 @@
 | llama.cpp | [llama.cpp](https://github.com/ggml-org/llama.cpp) | OK | [readme](./llama.cpp/readme.md) |
 | ComfyUI | [ComfyUI](https://github.com/comfyanonymous/ComfyUI) | OK | [readme](./comfyui/readme.md) |
 | VLLM | [VLLM](https://github.com/nlzy/vllm-gfx906), [triton](https://github.com/nlzy/triton-gfx906) | OK | [readme](./vllm/readme.md) |
+| VLLM (mobydick) | [VLLM](https://github.com/ai-infos/vllm-gfx906-mobydick), [triton](https://github.com/ai-infos/triton-gfx906), [flash-attn](https://github.com/ai-infos/flash-attention-gfx906) | OK | [readme](./vllm/readme.md#mobydick-fork) |
 
 
 | Project    |    | Image |
 | ---------- | -- | ----- |
-| ROCm       | ╦═ | `docker.io/larkinwc/rocm-gfx906:6.3.3-complete` |
+| ROCm       | ╦═ | `docker.io/larkinwc/rocm-gfx906:7.2.0-complete` |
+|            | ╠═ | `docker.io/larkinwc/rocm-gfx906:6.3.3-complete` |
 |            | ╠═ | `docker.io/mixa3607/rocm-gfx906:7.1.0-complete` |
 |            | ╠═ | `docker.io/mixa3607/rocm-gfx906:7.0.2-complete` |
 |            | ╠═ | `docker.io/mixa3607/rocm-gfx906:7.0.0-complete` |
@@ -31,6 +33,8 @@
 | vLLM       | ╦═ | `docker.io/mixa3607/vllm-gfx906:0.11.0-rocm-6.3.3` |
 |            | ╠═ | `docker.io/mixa3607/vllm-gfx906:0.10.2-rocm-6.3.3` |
 |            | ╚═ | `docker.io/mixa3607/vllm-gfx906:0.8.5-rocm-6.3.3`  |
+| vLLM (mobydick) | ╦═ | `docker.io/larkinwc/vllm-gfx906:mobydick-main-rocm-6.3.4` |
+|            | ╚═ | `docker.io/larkinwc/vllm-gfx906:0.16.1-rocm-6.3.3-mobydick` |
 | llama.cpp  | ╦═ | `docker.io/larkinwc/llama.cpp-gfx906:full-rocm-6.3.3` |
 |            | ╠═ | `docker.io/mixa3607/llama.cpp-gfx906:full-b7091-rocm-7.1.0` |
 |            | ╚═ | `docker.io/mixa3607/llama.cpp-gfx906:full-b7091-rocm-6.3.3` |
@@ -39,11 +43,12 @@
 ### Deps graph
 ```mermaid
 flowchart TD
-  rocm-src[docker.io/rocm/dev-ubuntu-24.04] --> rocm[docker.io/mixa3607/rocm-gfx906] 
+  rocm-src[docker.io/rocm/dev-ubuntu-24.04] --> rocm[docker.io/larkinwc/rocm-gfx906] 
   rocm --> llama[docker.io/mixa3607/llama.cpp-gfx906]
   rocm --> torch[docker.io/mixa3607/pytorch-gfx906]
   torch --> comfyui[docker.io/mixa3607/comfyui-gfx906]
   torch --> vllm[docker.io/mixa3607/vllm-gfx906]
+  rocm --> vllm-mobydick[docker.io/larkinwc/vllm-gfx906]
 ```
 
 ## Perf tuning
@@ -58,6 +63,7 @@ Committing changes to '/sys/class/drm/card1/device/pp_table'.
 
 ## Deployment
 - [K3s LXC deploy configs](./deploy/k3s-lxc/) - Helm values, LXC config, systemd units
+- [GPU Operator examples](./deploy/gpu-operator/README.md) - `amd.com/gpu` workloads pinned to `feature.node.kubernetes.io/amd-gpu-gfx906=true`
 - Helm chart: [mixa3607/charts](https://github.com/mixa3607/charts) `llamacpp`
 
 ## Environment

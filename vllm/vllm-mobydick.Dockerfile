@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends git && \
 
 RUN pip install --no-cache-dir torch==2.9.1 torchvision \
     --index-url https://download.pytorch.org/whl/rocm6.3
-RUN pip install --no-cache-dir amdsmi==$(cat /opt/ROCM_VERSION_FULL)
+RUN pip install --no-cache-dir "amdsmi>=$(cat /opt/ROCM_VERSION_MAJOR).$(cat /opt/ROCM_VERSION_MINOR),<$(cat /opt/ROCM_VERSION_MAJOR).$(( $(cat /opt/ROCM_VERSION_MINOR) + 1 ))"
 
 ENV PYTORCH_ROCM_ARCH=gfx906
 ENV LD_LIBRARY_PATH=/opt/rocm/lib:/usr/local/lib:
@@ -78,13 +78,17 @@ RUN --mount=type=bind,from=build_vllm,src=/dist/,target=/dist_vllm \
         opentelemetry-semantic-conventions-ai opentelemetry-exporter-otlp modelscope && \
     true
 
-# Patch RMSNormGated to add missing 'activation' parameter (upstream fix not in mobydick fork)
+# Patch RMSNormGated to add missing 'activation' parameter (only if not already present)
 RUN LAYERNORM=/usr/local/lib/python3.12/dist-packages/vllm/model_executor/layers/layernorm.py && \
-    sed -i 's/norm_before_gate: bool = False,/norm_before_gate: bool = False,\n        activation: str = "swish",/' "$LAYERNORM" && \
-    sed -i 's/self.norm_before_gate = norm_before_gate/self.norm_before_gate = norm_before_gate\n        self.activation = activation/' "$LAYERNORM"
+    if ! grep -q 'activation: str' "$LAYERNORM"; then \
+      sed -i 's/norm_before_gate: bool = False,/norm_before_gate: bool = False,\n        activation: str = "swish",/' "$LAYERNORM" && \
+      sed -i 's/self.norm_before_gate = norm_before_gate/self.norm_before_gate = norm_before_gate\n        self.activation = activation/' "$LAYERNORM"; \
+    else echo "RMSNormGated activation param already present, skipping patch"; fi
 
-# Enable experimental prefix caching for hybrid models (Qwen3.5 GatedDeltaNet)
+# Enable experimental prefix caching for hybrid models (only if restriction exists)
 RUN MODELCFG=/usr/local/lib/python3.12/dist-packages/vllm/config/model.py && \
-    sed -i '/Hybrid models do not support prefix caching/{n;s/return False/return True/}' "$MODELCFG"
+    if grep -q 'Hybrid models do not support prefix caching' "$MODELCFG"; then \
+      sed -i '/Hybrid models do not support prefix caching/{n;s/return False/return True/}' "$MODELCFG"; \
+    else echo "Hybrid prefix caching restriction not found, skipping patch"; fi
 
 CMD ["/bin/bash"]

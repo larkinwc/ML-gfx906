@@ -4,6 +4,66 @@ Used forks:
 - https://github.com/nlzy/vllm-gfx906
 - https://github.com/nlzy/triton-gfx906
 
+## Mobydick fork
+
+The "mobydick" variant uses forks maintained under [ai-infos](https://github.com/ai-infos) with flash-attention and triton builds tailored for gfx906. It installs PyTorch from pip (rocm6.3 wheels) rather than building from source, and includes runtime patches for RMSNormGated and hybrid model prefix caching.
+
+### Source repos
+| Component | Repo | Branch |
+| --------- | ---- | ------ |
+| vLLM | https://github.com/ai-infos/vllm-gfx906-mobydick | `main`, `gfx906/v0.16.1rc0.x` |
+| Triton | https://github.com/ai-infos/triton-gfx906 | `v3.5.1+gfx906` |
+| Flash Attention | https://github.com/ai-infos/flash-attention-gfx906 | `gfx906/v2.8.3.x` |
+
+### DockerHub images
+| Image | ROCm | PyTorch | Base |
+| ----- | ---- | ------- | ---- |
+| `docker.io/larkinwc/vllm-gfx906:mobydick-main-rocm-6.3.4` | 6.3.4 | 2.9.1 | `larkinwc/rocm-gfx906:6.3.3-complete` |
+| `docker.io/larkinwc/vllm-gfx906:0.16.1-rocm-6.3.3-mobydick` | 6.3.3 | 2.9.1 | `larkinwc/rocm-gfx906:6.3.3-complete` |
+
+### Building
+
+Use the mobydick preset and build script:
+
+```bash
+cd vllm/
+source preset.mobydick-main-rocm-6.3.4.sh
+./build-and-push.vllm-mobydick.sh
+```
+
+The Dockerfile (`vllm-mobydick.Dockerfile`) builds triton, flash-attention, and vllm as separate stages, then combines them into a final image. Build logs are saved to `./logs/`.
+
+### Running with Kubernetes
+
+See [`deploy/gpu-operator/vllm-qwen3.5-27b.yaml`](../deploy/gpu-operator/vllm-qwen3.5-27b.yaml) for a complete deployment example running Qwen3.5-27B-AWQ on 4x MI50 with tensor-parallel-size 4.
+
+Key environment variables:
+```
+HSA_OVERRIDE_GFX_VERSION=9.0.6
+PYTORCH_ROCM_ARCH=gfx906
+FLASH_ATTENTION_TRITON_AMD_ENABLE=TRUE
+VLLM_TARGET_DEVICE=rocm
+```
+
+### Running with Docker
+
+```bash
+docker run --rm -it --device /dev/kfd --device /dev/dri \
+  --shm-size 16g \
+  -v /path/to/models:/models \
+  -p 8000:8000 \
+  -e HSA_OVERRIDE_GFX_VERSION=9.0.6 \
+  docker.io/larkinwc/vllm-gfx906:mobydick-main-rocm-6.3.4 \
+  python3 -m vllm.entrypoints.openai.api_server \
+    --model /models/Qwen3.5-27B-AWQ \
+    --dtype float16 \
+    --tensor-parallel-size 4 \
+    --gpu-memory-utilization 0.98 \
+    --enforce-eager \
+    --enable-prefix-caching \
+    --host 0.0.0.0 --port 8000
+```
+
 ## Benchmarks
 
 - `AVG in` - average input tokens
@@ -102,7 +162,10 @@ Vers compatibility table:
 | 6.3.3 | 2.8.0   | 0.11.0 | 3.4.0  | QuantTrio/Qwen3-VL-32B-Instruct-AWQ  | ✅️ | ✅️ | ok |
 | 6.4.4 | 2.8.0   | 0.11.0 | 3.4.0  | gaunernst/gemma-3-27b-it-qat-autoawq | ⛔ | ⛔ | all requests throw exception |
 
-Recommend use `docker.io/mixa3607/vllm-gfx906:0.11.0-rocm-6.3.3`
+| 6.3.4 | 2.9.1   | main (mobydick) | 3.5.1 | Qwen3.5-27B-AWQ | ✅️ | ✅️ | `larkinwc/vllm-gfx906:mobydick-main-rocm-6.3.4`; flash-attn + prefix caching |
+| 6.3.3 | 2.9.1   | 0.16.1 (mobydick) | 3.5.1 | Qwen3.5-27B-AWQ | ✅️ | ✅️ | `larkinwc/vllm-gfx906:0.16.1-rocm-6.3.3-mobydick` |
+
+Recommend use `docker.io/larkinwc/vllm-gfx906:mobydick-main-rocm-6.3.4` (mobydick) or `docker.io/mixa3607/vllm-gfx906:0.11.0-rocm-6.3.3` (upstream nlzy fork)
 
 ### Docker
 Basics from amd https://github.com/ROCm/vllm/blob/main/docs/deployment/docker.md

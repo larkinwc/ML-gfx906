@@ -6,52 +6,56 @@ At this moment rebuild:
 - rccl
 - rocblas+tensile
 
-Recommend use `docker.io/mixa3607/rocm-gfx906:6.4.4-complete`
+Recommend use `docker.io/larkinwc/rocm-gfx906:7.2.0-complete` for the
+gfx906 GPU Operator lane. Older tags remain useful for the host-mounted K3s
+LXC workflow in this repo.
 
 ## Run
 ### Docker
 TODO
 
 ### Kubernetes
+For GPU Operator based clusters, use the selector
+`feature.node.kubernetes.io/amd-gpu-gfx906=true` together with the standard
+resource name `amd.com/gpu`.
+
 ```yaml
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: v1
+kind: Pod
 metadata:
-  name: rocmdev
-  namespace: ns-vllm
-  labels:
-    app: rocmdev
+  name: rocm-gfx906-smoke
+  namespace: llm
 spec:
-  strategy:
-    type: Recreate
-  replicas: 1
-  selector:
-    matchLabels:
-      app: rocmdev
-  template:
-    metadata:
-      labels:
-        app: rocmdev
-    spec:
-      containers:
-        - name: rocmdev
-          image: docker.io.mixa3607/rocm-gfx906:7.0.0-20251005035204-complete
-          imagePullPolicy: Always
-          securityContext:
-            privileged: true
-            runAsNonRoot: false
-            runAsGroup: 0
-            runAsUser: 0
-          command: [ "/bin/bash", "-c" ]
-          args:
-            - "apt install tmux wget -y; wget https://gist.githubusercontent.com/mixa3607/1e6d3ee7d87b018484cf80c7928b4c33/raw/.tmux.conf -O ~/.tmux.conf; while true; do sleep 1s; done;"
-            #- sleep inf
+  restartPolicy: Never
+  nodeSelector:
+    feature.node.kubernetes.io/amd-gpu-gfx906: "true"
+  containers:
+    - name: rocm
+      image: docker.io/larkinwc/rocm-gfx906:7.2.0-complete
+      imagePullPolicy: Always
+      command: ["/bin/bash", "-lc"]
+      args:
+        - rocminfo && rocm-smi && sleep infinity
+      env:
+        - name: HSA_OVERRIDE_GFX_VERSION
+          value: "9.0.6"
+      resources:
+        requests:
+          amd.com/gpu: 1
+          cpu: "1"
+          memory: 2Gi
+        limits:
+          amd.com/gpu: 1
+          memory: 8Gi
 ```
+
+The full manifest is also checked in at
+[`deploy/gpu-operator/rocm-smoke.yaml`](../deploy/gpu-operator/rocm-smoke.yaml).
 
 ## Build
 See build vars in `./env.sh`. You also may use presetis `./preset.rocm-*.sh`. Exec `./build-and-push.rocm.sh`:
 ```bash
-$ . preset.rocm-7.0.0.sh
+$ . preset.rocm-7.2.0.sh
 $ ./build-and-push.rocm.sh
 ~/REPOS/mixa3607/llama.cpp-gfx906/rocm ~/REPOS/mixa3607/llama.cpp-gfx906/rocm
 ~/REPOS/mixa3607/llama.cpp-gfx906/rocm
